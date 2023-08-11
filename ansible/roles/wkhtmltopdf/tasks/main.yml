@@ -1,0 +1,8 @@
+- include: ../../common/tasks/setfacts.yml 
+  tags:
+    - wkhtmltopdf
+
+- name: install wkhtmltopdf deb
+  apt: deb="{{ wkhtmltopdf_url }}"
+  tags:
+    - wkhtmltopdf

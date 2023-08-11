@@ -1,0 +1,10 @@
+- hosts: collectory
+  roles:
+    - common
+    - java
+    - webserver
+    - mysql
+    - tomcat
+    - i18n
+    - collectory
+  become: yes

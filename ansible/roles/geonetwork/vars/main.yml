@@ -1,0 +1,6 @@
+groupId: ""
+version: ""
+artifactId: ""
+packaging: ""
+classifier: ""
+geonetwork_war_url: "https://github.com/geonetwork/core-geonetwork/releases/download/3.4.4/geonetwork.war"

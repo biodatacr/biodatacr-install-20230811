@@ -1,0 +1,147 @@
+{% if robots_disallow_ips is defined and robots_disallow_ips|length > 0 %}
+        if ($blocked_ip) {
+            return 403;
+        }
+{% endif %}
+{% if robots_disallow_useragents is defined and robots_disallow_useragents|length > 0 %}
+        if ($blocked_user_agent) {
+            return 444;
+        }
+{% endif %}
+{% if item.extra_logs is defined and item.extra_logs|length > 0 %}
+        access_log {{ nginx_access_log }};
+{% for next_extra_log in item.extra_logs %}
+{% if next_extra_log is defined and next_extra_log|length > 0 %}
+        {{ next_extra_log }};
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if nginx_rate_limit_enabled is defined and nginx_rate_limit_enabled | bool == True %}
+{% if item.unlimited_conns is defined and item.unlimited_conns | bool == True %}
+        # Not rate limiting this location because unlimited_conns was set
+{% else %}
+{% if item.extra_limit_zones is defined and item.extra_limit_zones|length > 0 %}
+{% for next_extra_limit_zone in item.extra_limit_zones %}
+        limit_req zone={{ next_extra_limit_zone.name }} burst={{ next_extra_limit_zone.burst }};
+{% endfor %}
+{% endif %}
+        limit_req zone={{ nginx_rate_limit_name }} burst={{ nginx_rate_limit_burst }};
+{% endif %}
+{% endif %}
+{% if item.block_by_arguments is defined and item.block_by_arguments|length > 0 %}
+        # These query argument and value combinations were specified in the ansible configuration to be blocked for this location
+{% for next_block_by_argument in item.block_by_arguments %}
+        if ( $arg_{{ next_block_by_argument.field }} {{ next_block_by_argument.comparison | default('~') }} "{{ next_block_by_argument.value }}" ) {
+            return 403;
+        }
+{% endfor %}
+{% endif %}
+{% if nginx_auth_pam_shadow is defined and nginx_auth_pam_shadow | bool == True %}
+  {% if item.no_auth_required is defined and item.no_auth_required | bool == True %}
+        # No auth required for this path (see no_auth_required setting in nginx_paths)
+        #auth_pam    "Secure Zone";
+        #auth_pam_service_name   "nginx";
+  {% else %}
+        # Auth is required for this path
+        auth_pam    "Secure Zone";
+        auth_pam_service_name   "nginx";
+  {% endif %}
+{% endif %}
+{% if item.rewrite_path is defined and item.rewrite_path %}
+        rewrite ^ {{item.rewrite_path}}$1;
+{% endif %}
+{% if item.is_proxy is defined and item.is_proxy | bool == True %}
+        # proxy_set_header Host $host;
+{% if item.proxy_hostname is defined and item.proxy_hostname | length > 0 %}
+        proxy_set_header Host {{ item.proxy_hostname }};
+{% else %}
+        proxy_set_header Host {{ hostname }};
+{% endif %}
+{% if item.proxy_x_request_id is defined %}
+        set $x_request_id {{ item.proxy_x_request_id }};
+        proxy_set_header X-Request-Id $x_request_id;
+{% endif %}
+{% if nginx_proxy_protocol_enabled | bool %}
+        proxy_set_header X-Forwarded-For $proxy_protocol_addr;
+        proxy_set_header X-Real-IP $proxy_protocol_addr;
+{% else %}
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+{% endif %}
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_read_timeout 10m;
+    {% if nginx_disable_download_disk_buffering | bool == True %}
+        proxy_max_temp_file_size 0;
+    {% endif %}
+  {% if nginx_cache | bool == True and item.use_cache is defined and item.use_cache %}
+        proxy_cache {{ nginx_cache_zone }};
+    {% if nginx_cache_lock is defined and nginx_cache_lock %}
+        # Avoid concurrent requests for the same item by adding a lock to cache requests for the same key
+        proxy_cache_lock on;
+        proxy_cache_lock_age {{ nginx_cache_lock_age | default ('5s') }};
+        proxy_cache_lock_timeout {{ nginx_cache_lock_timeout | default('5s') }};
+    {% endif %}
+    {% if item.force_cache is defined and item.force_cache %}
+        proxy_cache_valid 200 {{ nginx_cache_valid_time }}; 
+    {% endif %}
+    {% if nginx_proxy_ignore_client_abort is defined and nginx_proxy_ignore_client_abort %}
+        # Enable the cache to be populated even if the client aborts the request if it eventually succeeds
+        proxy_ignore_client_abort on;
+    {% endif %}
+  {% endif %}
+  {% if item.proxy_buffers is defined and item.proxy_buffers | bool == True %}
+        proxy_buffer_size {{ item.proxy_buffer_size }};
+        proxy_buffers {{ item.proxy_buffers_count }} {{ item.proxy_buffers_size }};
+        proxy_busy_buffers_size {{ item.proxy_busy_buffers_size }};
+  {% endif %}
+  {% if nginx_load_balancing | bool == false and (item.is_websocket is defined and item.is_websocket | bool == true) %}
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+  {% endif %}
+  {% if nginx_load_balancing | bool == true and (item.unlimited_conns is not defined or item.unlimited_conns | bool != true) %}
+        # This backend is defined in the upstream section of the same name
+        proxy_pass http://{{ hostname }}_127.0.0.1_{{tomcat_server_port | default('8080', True)}}_backend{{ '_ala_default' if ala_default_vhost is defined and ala_default_vhost else '' }}{% if item.path|length == 0 %}/{% elif item.path|first == '/' %}{{ item.path }}{% else %}/{{ item.path }}{% endif %};
+    {% if nginx_keepalive is defined and nginx_keepalive | int > 0 %}
+        # Clear the "Connection" header because nginx_keepalive is > 0 and nginx_load_balancing is true
+        proxy_set_header Connection "";
+    {% endif %}
+  {% else %}
+        proxy_pass {{ item.proxy_pass }};
+  {% endif %}
+{% elif item.is_proxy_rewrite is defined and item.is_proxy_rewrite %}
+        rewrite ^{{ item.path }}/?(.*) /$1 break;
+        proxy_pass {{ item.proxy_pass }};
+{% elif item.alias is defined %}
+        alias {{ item.alias }};
+    {% if item.add_header is defined and item.add_header %}
+    add_header {{ item.add_header }};
+    {% endif %}
+    {% if item.try_files is defined and item.try_files %}
+try_files {{ item.try_files }};
+    {% endif %}
+{% elif item.rewrite is defined %}
+        return 301 {{ item.rewrite }};
+{% elif item.fastcgi is defined and item.fastcgi %}
+        try_files      $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass   unix:/var/run/php/php{{ ala_wordpress_php_version }}-fpm.sock;
+        fastcgi_index  index.php;
+        fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include        fastcgi_params;
+{% elif item.deny is defined and item.deny %}
+        deny all;
+{% elif item.expires is defined and item.expires %}
+        expires {{ item.expires }};
+    {% if item.add_header is defined and item.add_header %}
+    add_header {{ item.add_header }};
+    {% endif %}
+{% elif item.default_type is defined and item.default_type %}
+    default_type {{ item.default_type }};
+{% else %}
+        try_files {{ item.try_files }};
+{% endif %}
+{% if item.location_includes is defined and item.location_includes|length > 0 %}
+{% for next_location_include in item.location_includes %}
+        include {{ next_location_include }};
+{% endfor %}
+{% endif %}

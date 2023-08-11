@@ -1,0 +1,277 @@
+- name: show ansible versions
+  debug: msg="You are using Ansible {{ ansible_version.full }} on {{ansible_os_family}}. The current supported version for ala-install is {{ supported_ansible_version.full }}."
+
+# - name: check the ansible version
+#   pause: prompt="You are not using the supported version of Ansible. The supported version is {{ supported_ansible_version.full }}. You are using {{ ansible_version.full }}. Proceed at your own risk. Press enter to continue"
+#   when: supported_ansible_version.major != ansible_version.major or supported_ansible_version.minor != ansible_version.minor
+#   tags:
+#     - version_check
+
+- name: set ubuntu-14.04 variables
+  set_fact:
+    libtcnative: "libtcnative-1"
+    tomcat_package: "tomcat7"
+    tomcat_user: "tomcat7"
+    tomcat: "tomcat7"
+    tomcat_conf: "/etc/default/tomcat7"
+    tomcat_conf_dir: "/etc/tomcat7"
+    tomcat_log_dir: "/var/log/tomcat7"
+    apache: "apache2"
+    nginx: "nginx"
+    postfix: "postfix"
+    mysql_service: "mysql"
+    mysql: "mysql-server-5.5"
+    cassandra_yaml: "/etc/cassandra/cassandra.yaml"
+    cassandra_user: "cassandra"
+    python_software_properties: "python-software-properties"
+    tomcat_dir: "/var/lib/tomcat7"
+    tomcat_webapps: "/var/lib/tomat7/webapps/"
+    use_openjdk8: false
+    use_zulu8: True
+    psycopg2_package: "python-psycopg2"
+  when: ansible_os_family == "Debian" and ansible_distribution_version == "14.04"
+  tags:
+    - setfacts
+
+- name: set ubuntu-16.04 variables
+  set_fact:
+    libtcnative: "libtcnative-1"
+    tomcat_package: "tomcat7"
+    tomcat_user: "tomcat7"
+    tomcat: "tomcat7"
+    tomcat_conf: "/etc/default/tomcat7"
+    tomcat_conf_dir: "/etc/tomcat7"
+    tomcat_log_dir: "/var/log/tomcat7"
+    apache: "apache2"
+    nginx: "nginx"
+    postfix: "postfix"
+    mysql_service: "mysql"
+    mysql: "mysql-server-5.7"
+    cassandra_yaml: "/etc/cassandra/cassandra.yaml"
+    cassandra_user: "cassandra"
+    python_software_properties: "python-software-properties"
+    tomcat_dir: "/var/lib/tomcat7"
+    tomcat_webapps: "/var/lib/tomcat7/webapps/"
+#    use_openjdk8: true
+#    use_zulu8: False
+    psycopg2_package: "python3-psycopg2"
+  when: ansible_os_family == "Debian" and ansible_distribution_version == "16.04"
+  tags:
+    - setfacts
+
+# Allows switching back to tomcat7, which is available but not fully supported for Ubuntu-18.04
+- name: set ubuntu-18.04 variables - overrides
+  set_fact:
+    tomcat: "{{ tomcat | default('tomcat8') }}"
+#    use_openjdk8: "{{ use_openjdk8 | default('True') }}"
+#    use_openjdk11: "{{ use_openjdk11 | default('False') }}"
+  when: ansible_os_family == "Debian" and ansible_distribution_version == "18.04"
+  tags:
+  - setfacts
+
+- name: set ubuntu-18.04 variables
+  set_fact:
+    libtcnative: "libtcnative-1"
+    tomcat_package: "{{ tomcat }}"
+    tomcat_user: "{{ tomcat_user | default(tomcat) }}"
+    tomcat_conf: "/etc/default/{{ tomcat }}"
+    tomcat_conf_dir: "/etc/{{ tomcat }}"
+    tomcat_log_dir: "/var/log/{{ tomcat }}"
+    apache: "apache2"
+    nginx: "nginx"
+    postfix: "postfix"
+    mysql_service: "mysql"
+    mysql: "mysql-server-5.7"
+    cassandra_yaml: "/etc/cassandra/cassandra.yaml"
+    cassandra_user: "cassandra"
+    python_software_properties: "python3-software-properties"
+    tomcat_dir: "/var/lib/{{ tomcat }}"
+    tomcat_webapps: "/var/lib/{{ tomcat }}/webapps/"
+# openjdk-8 will be removed at some point from Ubuntu-18.04, so we will need to switch to Zulu-8 or similar at that point
+# openjdk-lts on Ubuntu-18.04 is JDK-11, so will not be directly useful by our applications at this point due to lack of testing
+#    use_openjdk8: true
+#    use_zulu8: False
+    psycopg2_package: "python3-psycopg2"
+  when: ansible_os_family == "Debian" and ansible_distribution_version == "18.04"
+  tags:
+    - setfacts
+
+- name: set ubuntu-20.04 variables - overrides
+  set_fact:
+    tomcat: "{{ tomcat | default('tomcat9') }}"
+    tomcat_user: "{{ tomcat_user | default('tomcat') }}"
+#    use_openjdk8: "{{ use_openjdk8 | default('True') }}"
+#    use_openjdk11: "{{ use_openjdk11 | default('False') }}"
+  when: ansible_os_family == "Debian" and ansible_distribution_version == "20.04"
+  tags:
+  - setfacts
+
+- name: set ubuntu-20.04 variables
+  set_fact:
+    libtcnative: "libtcnative-1"
+    tomcat_package: "{{ tomcat }}"
+    tomcat_user: "{{ tomcat_user }}"
+    tomcat_conf: "/etc/default/{{ tomcat }}"
+    tomcat_conf_dir: "/etc/{{ tomcat }}"
+    tomcat_log_dir: "/var/log/{{ tomcat }}"
+    apache: "apache2"
+    nginx: "nginx"
+    postfix: "postfix"
+    mysql_service: "mysql"
+    mysql: "mysql-server-8.0"
+    cassandra_yaml: "/etc/cassandra/cassandra.yaml"
+    cassandra_user: "cassandra"
+    python_software_properties: "python3-software-properties"
+    tomcat_dir: "/var/lib/{{ tomcat }}"
+    tomcat_webapps: "/var/lib/{{ tomcat }}/webapps/"
+# openjdk-8 will be removed at some point from Ubuntu-18.04, so we will need to switch to Zulu-8 or similar at that point
+#    use_openjdk8: true
+#    use_zulu8: False
+    psycopg2_package: "python3-psycopg2"
+  when: ansible_os_family == "Debian" and ansible_distribution_version == "20.04"
+  tags:
+    - setfacts
+
+- name: set ubuntu-22.04 variables - overrides
+  set_fact:
+    tomcat: "{{ tomcat | default('tomcat9') }}"
+    tomcat_user: "{{ tomcat_user | default('tomcat') }}"
+#    use_openjdk8: "{{ use_openjdk8 | default('True') }}"
+#    use_openjdk11: "{{ use_openjdk11 | default('False') }}"
+  when: ansible_os_family == "Debian" and ansible_distribution_version == "22.04"
+  tags:
+  - setfacts
+
+- name: set ubuntu-22.04 variables
+  set_fact:
+    libtcnative: "libtcnative-1"
+    tomcat_package: "{{ tomcat }}"
+    tomcat_user: "{{ tomcat_user }}"
+    tomcat_conf: "/etc/default/{{ tomcat }}"
+    tomcat_conf_dir: "/etc/{{ tomcat }}"
+    tomcat_log_dir: "/var/log/{{ tomcat }}"
+    apache: "apache2"
+    nginx: "nginx"
+    postfix: "postfix"
+    mysql_service: "mysql"
+    mysql: "mysql-server-8.0"
+    cassandra_yaml: "/etc/cassandra/cassandra.yaml"
+    cassandra_user: "cassandra"
+    python_software_properties: "python3-software-properties"
+    tomcat_dir: "/var/lib/{{ tomcat }}"
+    tomcat_webapps: "/var/lib/{{ tomcat }}/webapps/"
+    psycopg2_package: "python3-psycopg2"
+  when: ansible_os_family == "Debian" and ansible_distribution_version == "22.04"
+  tags:
+    - setfacts
+
+- name: set java defaults for openjdk11 (amd64)
+  set_fact:
+    java_security_opts: -Dlog4j2.formatMsgNoLookups=true
+    java_home: /usr/lib/jvm/java-11-openjdk-amd64
+  when: use_openjdk11 is defined and use_openjdk11 | bool == True and ansible_architecture != "aarch64"
+  tags:
+    - setfacts
+
+- name: set java defaults for openjdk11 (arm64)
+  set_fact:
+    java_security_opts: -Dlog4j2.formatMsgNoLookups=true
+    java_home: /usr/lib/jvm/java-11-openjdk-arm64
+  when: use_openjdk11 is defined and use_openjdk11 | bool == True and ansible_architecture == "aarch64"
+  tags:
+    - setfacts
+
+- name: set java defaults for openjdk8 (amd64)
+  set_fact:
+    java_security_opts: -Djava.security.properties=/etc/java-8-openjdk/security/enableLegacyTLS.security -Dlog4j2.formatMsgNoLookups=true
+    java_home: /usr/lib/jvm/java-8-openjdk-amd64
+  when: use_openjdk8 is defined and use_openjdk8 | bool == True and ansible_architecture != "aarch64"
+  tags:
+    - setfacts
+
+- name: set java defaults for openjdk8 (arm64)
+  set_fact:
+    java_security_opts: -Djava.security.properties=/etc/java-8-openjdk/security/enableLegacyTLS.security -Dlog4j2.formatMsgNoLookups=true
+    java_home: /usr/lib/jvm/java-8-openjdk-arm64
+  when: use_openjdk8 is defined and use_openjdk8 | bool == True and ansible_architecture == "aarch64"
+  tags:
+    - setfacts
+
+- name: set java defaults for zulu8
+  set_fact:
+    java_home: /usr/lib/jvm/zulu-8-amd64/jre
+    java_security_opts:
+  when: use_zulu8 is defined and use_zulu8 | bool == True
+  tags:
+    - setfacts
+
+- name: set name index date
+  set_fact:
+      name_index_date: "{{ nameindex_datestamp | default('latest') }}"
+  tags:
+    - setfacts
+
+- name: set name data date
+  set_fact:
+      name_data_date: "{{ namedata_datestamp | default('latest') }}"
+  tags:
+    - setfacts
+
+- name: set name index location with date {{name_index_date}}
+  set_fact:
+    aws_name_indexes_repo: "{{ aws_nameindex_source_url | default('https://s3.amazonaws.com/ala-nameindexes/latest') }}"
+    ala_name_indexes_repo: "{{ ala_nameindex_source_url | default('https://archives.ala.org.au/archives/nameindexes') }}/{{name_index_date}}"
+    ala_name_data_repo: "{{ ala_namedata_source_url | default('https://archives.ala.org.au/archives/nameindexes') }}/{{name_data_date}}"
+  tags:
+    - setfacts    
+
+- name: using the ALA nexus repository
+  set_fact:
+    maven_repo_base_url: "https://nexus.ala.org.au/content/groups/"
+    maven_repo_url: "https://nexus.ala.org.au/content/groups/{{maven_release_dir|default('public')}}"
+    maven_repo_ws_url: "https://nexus.ala.org.au/service/local/artifact/maven/redirect?r={{maven_release_dir | default('public')}}&g={{groupId | default('au.org.ala')}}&a={{artifactId | default('')}}&v={{version | default('')}}&e={{packaging | default('war')}}&c={{classifier | default('')}}"
+  when: use_gbif_nexus is not defined or use_gbif_nexus == "false"
+  tags:
+    - setfacts  
+
+- name: using the GBIF nexus repository
+  set_fact:
+    maven_repo_base_url: "http://repository.gbif.org/content/groups/"
+    maven_repo_url: "http://repository.gbif.org/content/groups/{{maven_release_dir|default('ala-release')}}"
+    maven_repo_ws_url: "http://repository.gbif.org/service/local/artifact/maven/redirect?r={{maven_release_dir | default('ala-release')}}&g={{groupId | default('au.org.ala')}}&a={{artifactId | default('')}}&v={{version | default('')}}&e={{packaging | default('war')}}&c={{classifier | default('')}}"
+  when: use_gbif_nexus is defined and use_gbif_nexus == "true"
+  tags:
+    - setfacts  
+
+- name: setup name index and data URLs
+  set_fact:
+    col_namematching_url: "{{aws_name_indexes_repo}}/col_namematching_20160226.tgz"
+    merged_namematching_url: "{{aws_name_indexes_repo}}/merge_namematching.tgz"
+    ala_namematching_url: "{{ala_name_indexes_repo}}/namematching-{{name_index_date}}.tgz"
+  tags:
+    - setfacts    
+
+- name: setup name sources
+  set_fact:
+    ala_name_sources:
+      - combined
+  tags:
+    - setfacts
+
+- name: set whether webserver is apache or nginx
+  set_fact:
+    webserver_nginx: "{{ webserver_nginx | default(false) }}"
+
+- name: set exec_jar as default value
+  set_fact:
+      exec_jar: false
+  tags:
+    - setfacts
+
+- name: set deployment packaging
+  set_fact:
+      exec_jar: true
+  when: packaging is defined and packaging == "jar"
+  tags:
+    - setfacts
+

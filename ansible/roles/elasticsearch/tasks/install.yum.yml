@@ -1,0 +1,10 @@
+---
+
+- name: elasticsearch-install | Install Java
+  yum: name=java-1.8.0-openjdk
+
+- name: elasticsearch-install | Download Elasticsearch
+  get_url: url={{elasticsearch_download_url}}/elasticsearch-{{elasticsearch_version}}.rpm dest={{elasticsearch_home}}/elasticsearch-{{elasticsearch_version}}.rpm mode=0440
+
+- name: elasticsearch-install | Install Elasticsearch
+  yum: name={{elasticsearch_home}}/elasticsearch-{{elasticsearch_version}}.rpm

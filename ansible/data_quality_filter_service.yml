@@ -1,0 +1,11 @@
+- hosts: data_quality_filter_service
+  roles:
+    - common
+    - java
+    - {role: db-backup, db: postgres, db_name: "{{ dq_db_name }}", db_user: "{{ dq_db_user }}", db_password: "{{ dq_db_password }}" }
+    - {role: postgresql, pg_version: "{{ data_quality_pg_version | default('13') }}"}
+    - {role: pg_instance, extensions: [], db_name: "{{ dq_db_name }}", db_user: "{{ dq_db_user }}", db_password: "{{ dq_db_password }}" }
+    - tomcat
+    - webserver
+    - { role: data_quality_filter_service, data_quality_filter_service: data-quality-filter-service }
+

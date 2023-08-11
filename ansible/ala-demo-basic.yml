@@ -1,0 +1,8 @@
+- name: demo basic
+  hosts: ala-demo
+  roles:
+    - common
+    - java
+    - tomcat
+    - webserver
+    - demo

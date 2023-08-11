@@ -1,0 +1,93 @@
+---
+# Variable setup.
+- name: Include OS specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ansible_distribution | lower }}-{{ansible_lsb.release}}.yml"
+    - "{{ansible_distribution | lower }}.yml"
+    - "{{ansible_os_family | lower}}.yml"
+
+- name: Define nginx_user.
+  set_fact:
+    nginx_user: "{{ __nginx_user }}"
+  when: nginx_user is not defined
+  tags:
+    - nginx
+
+# Setup/install tasks.
+- include: setup-redhat.yml
+  when: ansible_os_family | lower == 'redhat'
+  tags:
+    - nginx
+
+- include: setup-ubuntu.yml
+  when: ansible_distribution | lower == 'ubuntu'
+  tags:
+    - nginx
+
+- include: setup-debian.yml
+  when: ansible_os_family | lower == 'debian'
+  tags:
+    - nginx
+
+- include: setup-freebsd.yml
+  when: ansible_os_family | lower == 'freebsd'
+  tags:
+    - nginx
+
+- include: setup-openbsd.yml
+  when: ansible_os_family | lower == 'openbsd'
+  tags:
+    - nginx
+
+- include: setup-archlinux.yml
+  when: ansible_os_family | lower == 'archlinux'
+  tags:
+    - nginx
+
+- name: enable nginx modules if configured
+  set_fact:
+    nginx_extra_conf_options: "include {{ nginx_modules_path }}/*.conf;"
+  when:
+    - ansible_os_family == 'Debian'
+    - nginx_use_modules is defined and nginx_use_modules | bool == True
+  tags:
+    - nginx
+
+# Vhost configuration.
+- include: vhosts.yml
+  tags:
+    - nginx
+
+# Nginx setup.
+- name: Copy nginx mime.types file.
+  template:
+    src: "{{ nginx_mime_template }}"
+    dest: "{{ nginx_mime_file_path }}"
+    owner: root
+    group: "{{ root_group }}"
+    mode: 0644
+    backup: yes
+  notify:
+    - restart nginx
+  tags:
+    - nginx
+
+- name: Copy nginx configuration in place.
+  template:
+    src: "{{ nginx_conf_template }}"
+    dest: "{{ nginx_conf_file_path }}"
+    owner: root
+    group: "{{ root_group }}"
+    mode: 0644
+    validate: "nginx -t -c %s"
+    backup: yes
+  notify:
+    - restart nginx
+  tags:
+    - nginx
+
+- name: Ensure nginx is started and enabled to start at boot.
+  service: name=nginx state=started enabled=yes
+  tags:
+    - nginx

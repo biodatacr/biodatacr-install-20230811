@@ -1,0 +1,184 @@
+# Inventory to be used with spatial-standalone playbook
+# cd ~/path/to/ala-install/ansible
+# ansible-playbook -i inventories/vagrant/spatial-vagrant spatial-standalone.yml --private-key ~/.vagrant.d/insecure_private_key --user vagrant --become --ask-become-pass
+
+[spatial]
+spatial.vagrant1.ala.org.au
+
+[geoserver]
+spatial.vagrant1.ala.org.au
+
+[geonetwork]
+spatial.vagrant1.ala.org.au
+
+[spatial-hub]
+spatial.vagrant1.ala.org.au
+
+[spatial-service]
+spatial.vagrant1.ala.org.au
+
+###
+# Geoserver
+###
+
+[geoserver:vars]
+is_vagrant=true
+local_repo_dir=~/.ala
+data_dir=/data
+
+geoserver_hostname=spatial.vagrant1.ala.org.au
+geoserver_url=http://spatial.vagrant1.ala.org.au/geoserver
+geoserver_base_url=http://spatial.vagrant1.ala.org.au
+geoserver_context_path=/geoserver
+geoserver_app=geoserver
+
+geoserver_username=admin
+geoserver_password=geoserver
+
+layers_db_host=localhost
+layers_db_port=5432
+layers_db_name=layersdb
+layers_db_username=postgres
+layers_db_password=password
+
+postgresql_host=localhost
+postgresql_port=5432
+postgresql_database=layersdb
+postgresql_username=postgres
+postgresql_password=password
+
+webserver_nginx=true
+skip_geoserver_script=false
+robots_disallow_paths=["/ws", "/geoserver", "/geonetwork"]
+robots_disallow_useragents=["SemrushBot", "Mappy", "BUbiNG"]
+nginx_vhost_fragments_to_clear = ["spatial.vagrant1.ala.org.au"]
+
+ssl=false
+
+###
+# Geonetwork
+###
+
+[geonetwork:vars]
+is_vagrant=true
+local_repo_dir=~/.ala
+data_dir=/data
+
+geonetwork_hostname=spatial.vagrant1.ala.org.au
+geonetwork_url=http://spatial.vagrant1.ala.org.au/geonetwork
+geonetwork_base_url=http://spatial.vagrant1.ala.org.au
+geonetwork_context_path=/geonetwork
+geonetwork_app=geonetwork
+
+geonetwork_username=admin
+geonetwork_password=password
+geonetwork_database=geonetwork
+geonetwork_db_username=postgres
+geonetwork_db_password=password
+
+layers_db_host=localhost
+layers_db_port=5432
+layers_db_name=layersdb
+layers_db_username=postgres
+layers_db_password=password
+
+postgresql_host=localhost
+postgresql_port=5432
+postgresql_database=layersdb
+postgresql_username=postgres
+postgresql_password=password
+
+webserver_nginx=true
+robots_disallow_paths=["/ws", "/geoserver", "/geonetwork"]
+robots_disallow_useragents=["SemrushBot", "Mappy", "BUbiNG"]
+nginx_vhost_fragments_to_clear = ["spatial.vagrant1.ala.org.au"]
+
+ssl=false
+
+###
+# Spatial service
+###
+
+[spatial-service:vars]
+is_vagrant=true
+local_repo_dir=~/.ala
+data_dir=/data
+
+orgNameLong = Atlas of Living Australia
+
+spatial_service_hostname=spatial.vagrant1.ala.org.au
+spatial_service_url=http://spatial.vagrant1.ala.org.au/ws
+spatial_service_base_url=http://spatial.vagrant1.ala.org.au
+spatial_service_context_path=/ws
+
+layers_service_url=http://spatial.vagrant1.ala.org.au/ws
+biocache_service_url=https://biocache-ws.ala.org.au/ws
+
+layers_db_host=localhost
+layers_db_port=5432
+layers_db_name=layersdb
+layers_db_username=postgres
+layers_db_password=password
+
+postgresql_host=localhost
+postgresql_port=5432
+postgresql_database=layersdb
+postgresql_username=postgres
+postgresql_password=password
+
+spatial_service_api_key=get-me-an-api-key
+spatial_service_slave_key=create-shared-key
+spatial_service_service_key=create-shared-key
+
+slave_enable=true
+service_enable=true
+
+spatial_service_remote_url=https://nectar-spatial-staging.ala.org.au/spatial-service
+
+auth_base_url=https://auth.ala.org.au
+auth_cas_url=https://auth.ala.org.au/cas
+
+webserver_nginx=true
+robots_disallow_paths=["/ws", "/geoserver", "/geonetwork"]
+robots_disallow_useragents=["SemrushBot", "Mappy", "BUbiNG"]
+
+ssl=false
+
+###
+# Spatial hub
+###
+
+[spatial-hub:vars]
+is_vagrant=true
+local_repo_dir=~/.ala
+data_dir=/data
+
+spatial_hub_hostname=spatial.vagrant1.ala.org.au
+spatial_hub_url=http://spatial.vagrant1.ala.org.au/
+spatial_hub_base_url=http://spatial.vagrant1.ala.org.au
+spatial_hub_context_path=/
+
+layers_service_url=http://spatial.vagrant1.ala.org.au/ws
+geoserver_url=http://spatial.vagrant1.ala.org.au/geoserver
+
+sandbox_url=https://sandbox.ala.org.au/ala-hub
+sandbox_ui_url=https://sandbox.ala.org.au/datacheck
+sandbox_biocache_service_url=https://sandbox.ala.org.au/biocache-service
+
+google_api_key=get-a-google-api-key
+spatial_hub_api_key=get-an-ala-api-key
+
+tomcat_java_opts = -Xmx1g -Xms1g -Xss1024k -Djava.awt.headless=true
+
+webserver_nginx=true
+robots_disallow_paths=["/ws", "/geoserver", "/geonetwork"]
+robots_disallow_useragents=["SemrushBot", "Mappy", "BUbiNG"]
+
+ssl=false
+
+
+nginx_client_max_body_size=120m
+
+gdal_from_src=false
+
+nginx_vhost_fragments_to_clear = ["spatial.vagrant1.ala.org.au"]

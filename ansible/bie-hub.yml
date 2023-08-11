@@ -1,0 +1,10 @@
+# Installs bie-hub
+- hosts: bie-hub
+  roles:
+    - common
+    - java
+    - webserver
+    - tomcat
+    - i18n
+    - bie-hub
+

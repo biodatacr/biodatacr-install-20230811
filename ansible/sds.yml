@@ -1,0 +1,8 @@
+- hosts: sds
+  roles:
+    - common
+    - java
+    - webserver
+    - tomcat
+    - sds
+    - nameindex

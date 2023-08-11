@@ -1,0 +1,18 @@
+{% if ala_default_allowed_useragents|length > 0 %}
+        # Only allow these useragents to access the default vhost for application-specific locations
+        # Telling NGINX to return 444 is a special pseudo response code that immediately cuts the TCP connection with no response
+        if ($http_user_agent !~* ({{ ala_default_allowed_useragents|join('|') }}) ) {
+            return 444;
+        }
+{% endif %}
+        # Allow access from local host for monitoring
+        allow 127.0.0.1;
+        allow ::1;
+{% if nginx_set_real_ips is defined and nginx_set_real_ips|length > 0 %}
+        # These proxy IPs are trusted to return accurate X-Forwarded-For headers to find user IP addresses
+{% for next_set_real_ip in nginx_set_real_ips %}
+        allow {{ next_set_real_ip }};
+{% endfor %}
+{% endif %}
+        # Default to deny all
+        deny all;

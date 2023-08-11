@@ -1,0 +1,5 @@
+- hosts: solr6-server
+  roles:
+    - common
+    - java
+    - solr6

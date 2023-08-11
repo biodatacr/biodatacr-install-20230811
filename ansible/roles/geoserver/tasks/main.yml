@@ -1,0 +1,11 @@
+- include: ./geoserver.yml
+  when: geoserver_task == "geoserver"
+  tags:
+    - geoserver
+
+- include: ./ecodata-geoserver.yml
+  when: geoserver_task == "ecodata"
+  tags:
+    - geoserver
+    - ecodata-geoserver
+    - extension

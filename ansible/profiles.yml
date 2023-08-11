@@ -1,0 +1,20 @@
+- hosts: profiles:sandbox
+  roles:
+    - common
+    - java
+    - tomcat
+#    - {role: db-backup, db: mongo}
+    - {role: mongodb-org, mongodb_version: 4.0}
+#    - cassandra3
+#    - solr6 # must be installed AFTER biocache & sandbox, or you get errors complaining about not finding 'collection1'
+    - webserver
+#    - postfix
+    - nameindex
+    - elasticsearch
+#    - biocache-db
+#    - biocache-properties
+#    - biocache-service
+#    - sandbox
+#    - biocache-cli
+    - profile-service
+    - profile-hub

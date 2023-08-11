@@ -1,0 +1,32 @@
+#
+#  DO NOT ADD mysql OR mongo server ROLES TO THIS PLAYBOOK
+#  THIS PLAYBOOK MUST REMAIN COMPATIBLE WITH EXTERNAL DB SERVERS
+#
+- hosts: cas-servers
+  vars:
+    webserver_nginx: true
+  serial:
+  - 1
+  - "100%"
+  roles:
+    - common
+    - postfix
+    - webserver
+    - cas5-dbs
+    - { role: cas5,
+      min_memory: "{{ cas_min_memory | default('512m') }}",
+      max_memory: "{{ cas_max_memory | default('2g') }}",
+      service_registry_init_from_json: '{{ inventory_hostname == ansible_play_batch[0] }}',
+      bootadmin_client_base_url: 'https://{{ inventory_hostname}}/' }
+    - { role: cas-management,
+      min_memory: "{{ cas_management_min_memory | default('256m') }}",
+      max_memory: "{{ cas_management_max_memory | default('1g') }}",
+      bootadmin_client_base_url: 'https://{{ inventory_hostname}}/' }
+    - { role: userdetails,
+      min_memory: "{{ userdetails_min_memory | default('256m') }}",
+      max_memory: "{{ userdetails_max_memory | default('1g') }}",
+      bootadmin_client_base_url: 'https://{{ inventory_hostname}}/' }
+    - { role: apikey,
+      min_memory: "{{ apikey_min_memory | default('256m') }}",
+      max_memory: "{{ apikey_max_memory | default('1g') }}",
+      bootadmin_client_base_url: 'https://{{ inventory_hostname}}/' }

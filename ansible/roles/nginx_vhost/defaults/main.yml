@@ -1,0 +1,117 @@
+---
+redirect: ''
+nginx_conf_dir: '/etc/nginx'
+nginx_access_log: "/var/log/nginx/access.log main"
+ssl: true
+# By default activate HTTP/2, which also allows HTTP/1.1 connections
+# However, some users may find issues when HTTP/2 support is enabled at all if they can't work with ALPN
+nginx_http2_enabled: true
+# Allow optional activation of TLS-1.3 if users know their version of nginx supports it
+nginx_tls_v1_3_enabled: true
+# By default only support TLS-1.2 for security, but allow some users to activate others or deactivate it
+nginx_tls_v1_2_enabled: true
+# Allow optional activation of the insecure TLS-1.1 protocol
+nginx_tls_v1_1_enabled: false
+# Allow optional activation of the insecure TLS-1.0 protocol
+# IMPORTANT: Only activate TLS-1.0 if you know that a critical user doesn't support newer safe TLS versions
+nginx_tls_v1_0_enabled: false
+# Default to a modern set of TLS ciphers
+nginx_tls_ciphers: "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256"
+force_https: true
+# Add strings to this list containing the vhost fragment directory names to clear
+nginx_vhost_fragments_to_clear: []
+nginx_root: "/srv/{{ hostname }}/www/"
+nginx_index: 'index.html'
+context_path: '/'
+# By default, no robots should be accessing any servers, customise this in your inventory to allow access to specific paths
+robots_disallow_paths: ["/"]
+# Semrush completely ignore robots.txt, so banning them by default from all of our servers
+robots_disallow_useragents: ["Semrush"]
+# Add IPs to this list in your inventory to disallow specific IP addresses in nginx
+# Semrush IP addresses based on AS209366
+robots_disallow_ips: ["85.208.96.0/22", "185.191.171.0/24"]
+# Add IPs to this list that are known to send correct x-forwarded-for headers, and can hence be safely relied on
+# https://nginx.org/en/docs/http/ngx_http_realip_module.html
+nginx_set_real_ips: []
+# Set to true to enable the proxy protocol
+# https://docs.nginx.com/nginx/admin-guide/load-balancer/using-proxy-protocol/
+nginx_proxy_protocol_enabled: False
+# Set to "proxy_protocol" to support the nginx proxy protocol
+nginx_real_ip_header: "X-Forwarded-For"
+# If either of the following are set to true, a default host will be created
+# Any existing default host will be deactivated from sites-enabled, but left in sites-available
+aws_elb_healthcheck_default: false
+nginx_default_vhost_required: false
+# Customise the following to allow specific user agents to access the default vhost
+# Set to an empty list to allow all user agents to access the default vhost
+ala_default_allowed_useragents: ["ELB-HealthChecker"]
+tomcat_server_port: '8080'
+frame_options_header: true
+frame_options_header_value: "DENY"
+content_type_options_header: true
+xss_protection_header: false
+nginx_cache: false
+nginx_cache_path: "/data/nginx_cache"
+nginx_cache_zone: "cache"
+nginx_cache_zone_size: "10m"
+nginx_cache_size: "2g"
+nginx_cache_time: "60m"
+nginx_cache_valid_time: "60m"
+nginx_cache_invalid_time: "0s"
+# Set this to true to have the nginx cache cleared when deployment completes
+nginx_clear_cache_on_deploy: False
+
+# Set this to true in your inventory if you know that you are only deploying a single nginx_vhost and you want to clear previous versions before deploying each time
+clear_vhost_fragments: false
+# Set this to true in your inventory if you know that you are deploying for instance biocache and biocache/ws in the same server
+vhost_with_appname_conf: true
+nginx_auth_pam_shadow: false
+# Set this to true to enable support for 'upstream' load balancing features
+nginx_load_balancing: false
+# When load balancing is enabled, this is used to specify the maximum number of connections from nginx to the upstream load balanced server
+# This is used to avoid denial of service on the upstream server when it is under load
+nginx_max_conns: 50
+# When nginx_load_balancing is enabled, this can be used to specify the maximum number of keepalive connections nginx should upstream coonections
+# Defaults to the same as the max_conns default and should be customised whenever customising nginx_max_conns
+# Set this to 0 if you want upstream load balancing without any keepalive
+nginx_keepalive: 50
+# When nginx_load_balancing is enabled and nginx_keepalive is greater than 0, this can be used to specify the maximum number of requests made through a keepalive connection before closing it
+# Sets the maximum number of requests that can be served through one keepalive connection. After the maximum number of requests is made, the connection is closed
+nginx_keepalive_requests: 100
+# Sets a timeout (in seconds) during which an idle keepalive connection to an upstream server will stay open.
+nginx_keepalive_timeout: 60
+# sets the number of unsuccessful attempts to communicate with the server that should happen in the duration set by the fail_timeout parameter to consider the server unavailable for a duration also set by the fail_timeout parameter. 
+# By default it is set to 0 to disable the accounting of attempts.
+# Customise this if you intentionally want to use nginx_fail_timeout to specify a period of time where there are no requests made to the upstream because of failures
+nginx_max_fails: 0
+# Sets the time (in seconds) during which the specified number of unsuccessful attempts to communicate with the server should happen to consider the server unavailable;
+# Also sets the period of time the server will be considered unavailable.
+nginx_fail_timeout: 10
+
+# Set this to true to enable rate limiting for nginx
+# https://www.nginx.com/blog/rate-limiting-nginx/
+nginx_rate_limit_enabled: False
+nginx_rate_limit_ip_variable: "$binary_remote_addr"
+# Customise this name if necessary to support rate limits specific to applications
+nginx_rate_limit_name: "nginxratelimitzone"
+# 10m is quoted in documentation to support about 160,000 requests
+nginx_rate_limit_size: "10m"
+# Default to supporting 300 requests per minute if rate limiting is enabled
+nginx_rate_limit: "300r/m"
+# Default to a burst of 80, tune this in conjunction with nginx_rate_limit
+nginx_rate_limit_burst: "80"
+
+# Setup nginx_other_limit_zones to add alternative limits for some cases
+# Needs to match the zone names setup for the relevant locations
+nginx_other_limit_zones: []
+
+# Set to true to disable disk buffering e.g. for downloading large files (sets proxy_max_temp_file_size to 0)
+nginx_disable_download_disk_buffering: False
+# Set this to configure cors to some regexp
+# Test your regexp of type PCRE with a tool like https://www.regextester.com/
+# Sample:  ^https?:\/\/(localhost|l-a\.site|.*\.l-a\.site)
+# nginx_cors_origin_regexp: '^https?:\/\/(localhost|l-a\.site|.*\.l-a\.site)'
+nginx_cors_headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range"
+nginx_cors_methods: "GET, POST, OPTIONS"
+# by default, Access-Control-Allow-Credentials header is not included; to include it, set this to True
+nginx_cors_allow_credentials: False

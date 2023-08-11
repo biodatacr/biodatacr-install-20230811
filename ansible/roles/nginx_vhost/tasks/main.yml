@@ -1,0 +1,552 @@
+- name: set ubuntu-14.04 variables
+  set_fact:
+    nginx_tls_v1_3_enabled: False
+  when: ansible_os_family == "Debian" and ansible_distribution_version == "14.04"
+  tags:
+    - nginx_vhost
+
+- name: set ubuntu-16.04 variables
+  set_fact:
+    nginx_tls_v1_3_enabled: False
+  when: ansible_os_family == "Debian" and ansible_distribution_version == "16.04"
+  tags:
+    - nginx_vhost
+
+- name: set ubuntu-18.04 variables
+  set_fact:
+    nginx_tls_v1_3_enabled: True
+  when: ansible_os_family == "Debian" and ansible_distribution_version == "18.04"
+  tags:
+    - nginx_vhost
+
+- name: set ubuntu-20.04 variables
+  set_fact:
+    nginx_tls_v1_3_enabled: True
+  when: ansible_os_family == "Debian" and ansible_distribution_version == "20.04"
+  tags:
+    - nginx_vhost
+
+#- name: determine if a virtual host is required (vhost not required for localhost, 127.0.0.1 or any hostname with a colon in it)
+#  set_fact: vhost_required={{ hostname.find(':') == -1 and hostname.find('localhost') == -1 and hostname.find('127.0.0.1') == -1 }}
+#  tags:
+#    - nginx_vhost
+
+- name: set vhost_required
+  set_fact: vhost_required=true
+  tags:
+    - nginx_vhost
+
+#- name: is a virtual host required?
+#  debug: msg="Virtual Host required for hostname {{hostname}}? {{vhost_required}}"
+
+- name: check whether HTTPS is required
+  set_fact: ssl={{ ssl | default(false) }}
+  tags:
+    - nginx_vhost
+
+- name: check whether we are rewriting HTTP to HTTPS
+  set_fact: force_https={{ force_https | default(false) }}
+  tags:
+    - nginx_vhost
+
+#- name: is HTTPS required?
+#  debug: msg="HTTPS required for hostname {{hostname}}? {{ssl}}"
+
+#- name: will HTTP rewrite to HTTPS?
+#  debug: msg="Rewrite HTTPS for hostname {{hostname}}? {{ssl and force_https}}"
+
+- name: make sure required parameters are defined
+  fail: msg="One or more mandatory parameters are not defined - ssl_certificate_server_dir, ssl_cert_file, ssl_key_file. If you don't want https, set ssl=false in inventory."
+  when: ssl and (ssl_key_file is undefined or ssl_cert_file is undefined or ssl_certificate_server_dir is undefined)
+  tags:
+    - nginx_vhost
+
+- name: set ssl_cert_filepath variable, if required
+  set_fact: ssl_cert_filepath={{ssl_certificate_server_dir}}/{{ ssl_cert_file }}
+  when: ssl_cert_file is defined and ssl_certificate_server_dir is defined
+  tags:
+    - nginx_vhost
+
+- name: set ssl_key_filepath variable, if required
+  set_fact: ssl_key_filepath={{ssl_certificate_server_dir}}/{{ ssl_key_file }}
+  when: ssl_key_file is defined and ssl_certificate_server_dir is defined
+  tags:
+    - nginx_vhost
+
+- name: check whether copying HTTPS certificates from local is required
+  set_fact: copy_https_certs_from_local={{ copy_https_certs_from_local | default(false) }}
+  tags:
+    - nginx_vhost
+
+- name: copy HTTPS certificate files from local
+  copy: src={{item}} dest={{ssl_certificate_server_dir | default('~') }}
+  with_items:
+    - "{{ssl_certificate_local_dir | default('') }}/{{ssl_cert_file | default('') }}"
+    - "{{ssl_certificate_local_dir | default('') }}/{{ssl_key_file | default('') }}"
+    - "{{ssl_certificate_local_dir | default('') }}/{{ssl_chain_file | default('') }}"
+  when: ssl | bool == True and copy_https_certs_from_local and vhost_required | bool == True
+  notify:
+   - reload nginx
+  tags:
+    - nginx_vhost
+
+- name: set context path to root by default
+  set_fact: 
+    context_path: "/"
+  when: context_path is not defined or (context_path | trim == '')
+  tags:
+    - nginx_vhost
+
+- name: set vfragments_suffix when vhost_with_appname_conf is true
+  set_fact:
+    vfragments_suffix: "-{{appname}}"
+  when: vhost_with_appname_conf | bool == True
+  tags:
+    - nginx_vhost
+
+- name: set empty vfragments_suffix when vhost_with_appname_conf is false
+  set_fact:
+    vfragments_suffix: ""
+  when: vhost_with_appname_conf | bool == False
+  tags:
+    - nginx_vhost
+
+- name: set webserver_extra_servernames empty by default
+  set_fact: 
+    webserver_extra_servernames: []
+  when: webserver_extra_servernames is not defined or (webserver_extra_servernames | trim == '')
+  tags:
+    - nginx_vhost
+
+- name: set nginx_paths with root path by default
+  set_fact: 
+    nginx_paths:
+      - path: "{{context_path | default('/', True)}}"
+        is_proxy: true
+        use_cache: false
+        proxy_pass: "http://127.0.0.1:{{tomcat_server_port | default('8080', True)}}{{context_path | default('/', True)}}"
+  when: nginx_paths is not defined or (nginx_paths | trim == '')
+  tags:
+    - nginx_vhost
+
+- name: debug - check nginx_paths value
+  pause: prompt="nginx_paths value is {{nginx_paths}}"
+  when: nginx_paths_debug_enabled is defined and nginx_paths_debug_enabled | bool == True
+
+- name: install libnginx-mod-http-auth-pam
+  apt: name="libnginx-mod-http-auth-pam" state=present
+  when: nginx_auth_pam_shadow 
+  notify:
+   - reload nginx
+  tags:
+    - nginx_vhost
+
+- name: enable nginx mod-http-auth-pam
+  file:
+    src: "/usr/share/nginx/modules-available/mod-http-auth-pam.conf"
+    dest: "/etc/nginx/modules-enabled/50-mod-http-auth-pam.conf"
+    state: link
+  when: nginx_auth_pam_shadow 
+  notify:
+   - reload nginx
+  tags:
+    - nginx_vhost
+
+- name: pam authentication - shadow
+  command: usermod -a -G shadow www-data
+  when: nginx_auth_pam_shadow 
+  tags:
+    - nginx_vhost
+
+- name: pam authentication - pam.d
+  copy: src="files/pam-nginx" dest="/etc/pam.d/nginx" owner="root" group="root" mode=0644
+  when: nginx_auth_pam_shadow 
+  notify:
+   - reload nginx
+  tags:
+    - nginx_vhost
+
+- name: ensure sites-available dir is present
+  file: 
+    path: "{{nginx_conf_dir}}/sites-available"
+    state: directory
+    mode: 0755 
+    owner: root
+    group: root
+  when: vhost_required | bool == True
+  notify:
+   - reload nginx
+  tags:
+    - nginx_vhost
+
+- name: clear old vhost fragments
+  file:
+    path: "{{ nginx_conf_dir }}/vhost_fragments/{{ item }}"
+    state: absent
+  when: nginx_vhost_fragments_to_clear is defined and nginx_vhost_fragments_to_clear|length > 0
+  with_items: "{{ nginx_vhost_fragments_to_clear }}"
+  tags:
+    - nginx_vhost
+
+# check dir exists for servername fragments
+- name: ensure vhost fragments dir is present
+  file: 
+    path: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}"
+    state: directory
+    mode: 0755 
+    owner: root
+    group: root
+  when: vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+- name: ensure nginx cache dir is present if configured
+  file: 
+    path: "{{nginx_cache_path}}"
+    state: directory
+    mode: 0755 
+    owner: www-data
+    group: www-data
+  when: vhost_required | bool == True and nginx_cache | bool == True
+  notify:
+    - reload nginx
+  tags:
+    - nginx_vhost
+
+- name: ensure nginx cache dir will be cleared by handler
+  debug:
+    msg: "Ensuring nginx cache dir will be cleared by handler"
+  when: vhost_required | bool == True and nginx_cache | bool == True
+  changed_when: nginx_clear_cache_on_deploy|bool == True
+  notify:
+# FIXME: Ansible-2.8 is having issues with this call, replacing with restart nginx at this point
+#    - clear nginx cache
+    - restart nginx
+  tags:
+    - nginx_vhost
+
+- name: copy cors configuration if required
+  template:
+    src: "ala_cors.j2"
+    dest: "{{nginx_conf_dir}}/conf.d/ala_cors_{{appname}}"
+  when: nginx_cors_origin_regexp is defined
+  notify:
+    - reload nginx
+  tags:
+    - nginx_vhost
+
+- name: add upstream fragment
+  template:
+    src: "fragment_02_upstream.j2"
+    dest: "{{nginx_conf_dir}}/conf.d/http_02_upstream_{{ hostname }}_127.0.0.1_{{ tomcat_server_port | default('8080', True) }}.conf"
+  when: vhost_required | bool == True and nginx_load_balancing | bool == true and item.is_proxy and item.proxy_pass is defined
+  with_items:
+    - "{{ nginx_paths}} "
+  notify:
+   - reload nginx
+  tags:
+    - nginx_vhost
+
+- name: remove upstream fragment if not needed
+  file:
+    path: "{{nginx_conf_dir}}/conf.d/http_02_upstream_{{ hostname }}_127.0.0.1_{{ tomcat_server_port | default('8080', True) }}.conf"
+    state: absent
+  when: vhost_required | bool == True and nginx_load_balancing | bool != true
+  with_items:
+    - "{{ nginx_paths}} "
+  notify:
+   - reload nginx
+  tags:
+    - nginx_vhost
+
+- name: add blocking if configured
+  template:
+    src: "fragment_03_blocking.j2"
+    dest: "{{nginx_conf_dir}}/conf.d/http_03_blocking.conf"
+  when: vhost_required | bool == True
+  notify:
+   - reload nginx
+  tags:
+    - nginx_vhost
+
+- name: add nginx rate limiter if configured
+  template:
+    src: "fragment_04_ratelimit.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/http_04_ratelimit"
+  when: vhost_required | bool == True and nginx_rate_limit_enabled | bool == True
+  tags:
+    - nginx_vhost
+
+- name: add cache fragment if configured
+  template:
+    src: "fragment_05_cache.j2"
+    dest: "{{nginx_conf_dir}}/conf.d/http_05_cache_{{ nginx_cache_zone }}.conf"
+  when: vhost_required | bool == True and nginx_cache | bool == True
+  notify:
+   - reload nginx
+  tags:
+    - nginx_vhost
+
+# If any of the nginx_paths has is_websocket, we need to add this template
+- name: add connection upgrade fragment
+  template:
+    src: "fragment_06_connection.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/http_06_connection"
+  when: vhost_required | bool == True and nginx_load_balancing | bool == false and item.is_websocket is defined and item.is_websocket | bool == true
+  with_items:
+    - "{{ nginx_paths}} "
+
+# copy 10, 20, 90 as http (e.g. dest file might be /etc/nginx/vhost_fragments/bie-test.ala.org.au/http_10_start)
+- name: add start http fragment
+  template:
+    src: "fragment_10_start_http.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/http_10_start"
+  when: vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+- name: add basic http fragments
+  template:
+    src: "fragment_{{ item }}.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/http_{{ item }}"
+  with_items:
+    - "20_servername"
+    - "90_end"
+  when: vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+- name: Find https fragments if not using https
+  find:
+    paths: "{{ nginx_conf_dir }}/vhost_fragments/{{ hostname }}/"
+    patterns: "https_*"
+  register: https_fragments_to_delete
+  when: ssl | bool == False and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+- name: Delete https fragments if not using https
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ https_fragments_to_delete.files }}"
+  when: ssl | bool == False and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+- name: create root directory
+  file: path="{{ nginx_root }}" state=directory mode=0755 force=yes follow=yes
+  when: vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+# if not ssl or (ssl and not force_https): copy 50 http
+- name: if not using force_https, add root http fragment
+  template:
+    src: "fragment_{{ item }}.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/http_{{ item }}"
+  with_items:
+    - "50_root"
+    - "55_include"
+  when: (ssl | bool == False or (ssl | bool == True and force_https | bool == False)) and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+# if not ssl or (ssl and not force_https): copy 60 robots
+- name: if not using force_https, add robots http fragment
+  template:
+    src: "fragment_{{ item }}.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/http_{{ item }}"
+  with_items:
+    - "60_robots"
+  when: (ssl | bool == False or (ssl | bool == True and force_https | bool == False)) and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+# if not ssl or (ssl and not force_https): copy (70 per path) http
+# basename filter returns last part of path e.g. for /ws returns ws, for / returns empty
+- name: if not using force_https, add location http fragments
+  template:
+    src: "fragment_70_location_start.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/http_70_location_{{ item.sort_label | default(item.path | basename) }}_70_start"
+  with_items:
+    - "{{ nginx_paths}} "
+  when: (ssl | bool == False or (ssl | bool == True and force_https | bool == False)) and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+# if not ssl or (ssl and not force_https): copy (73 per path) http
+# basename filter returns last part of path e.g. for /ws returns ws, for / returns empty
+- name: if not using force_https, add location http fragments
+  template:
+    src: "fragment_73_location.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/http_70_location_{{ item.sort_label | default(item.path | basename) }}_73_content"
+  with_items:
+    - "{{ nginx_paths}} "
+  when: (ssl | bool == False or (ssl | bool == True and force_https | bool == False)) and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+- name: add cors fragment if required
+  template:
+    src: "fragment_74_location_cors.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/http_70_location_{{ item.sort_label | default(item.path | basename) }}_74_cors"
+  with_items:
+    - "{{ nginx_paths}} "
+  when: (ssl | bool == False or (ssl | bool == True and force_https | bool == False)) and vhost_required | bool == True and nginx_cors_origin_regexp is defined
+  tags:
+    - nginx_vhost
+
+# if not ssl or (ssl and not force_https): copy (75 per path) http
+# basename filter returns last part of path e.g. for /ws returns ws, for / returns empty
+- name: if not using force_https, add location http fragments
+  template:
+    src: "fragment_75_location_end.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/http_70_location_{{ item.sort_label | default(item.path | basename) }}_75_end"
+  with_items:
+    - "{{ nginx_paths}} "
+  when: (ssl | bool == False or (ssl | bool == True and force_https | bool == False)) and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+# if not ssl or (ssl and not force_https), delete 30 http
+- name: if not using force_https, delete force_https fragment
+  file: 
+    path: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/http_30_force_https"
+    state: absent
+  when: (ssl | bool == False or (ssl | bool == True and force_https | bool == False)) and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+# if ssl and force_https, copy 30 as http
+- name: if using force_https, add force_https fragment
+  template:
+    src: "fragment_{{ item }}.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/http_{{ item }}"
+  with_items:
+    - "30_force_https"
+  when: ssl | bool == True and force_https | bool == True and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+# if ssl, copy 10, 20, 40, 50, 90 as https
+- name: add start https fragment
+  template:
+    src: "fragment_10_start_https.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/https_10_start"
+  when: ssl | bool == True and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+- name: add basic https fragments
+  template:
+    src: "fragment_{{ item }}.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/https_{{ item }}"
+  with_items:
+    - "20_servername"
+    - "40_ssl"
+    - "50_root"
+    - "55_include"
+    - "60_robots"
+    - "90_end"
+  when: ssl | bool == True and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+# if ssl, copy (70 per path) https
+# example https location for /ws path: /etc/nginx/vhost_fragments/bie-test.ala.org.au/https_70_location_start_ws
+# basename filter returns last part of path e.g. for /ws returns ws, for / returns empty
+- name: add location https fragments
+  template:
+    src: "fragment_70_location_start.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/https_70_location_{{ item.sort_label | default(item.path | basename) }}_70_start"
+  with_items:
+    - "{{ nginx_paths }}"
+  when: ssl | bool == True and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+# if ssl, copy (73 per path) https
+# example https location for /ws path: /etc/nginx/vhost_fragments/bie-test.ala.org.au/https_73_location_ws
+# basename filter returns last part of path e.g. for /ws returns ws, for / returns empty
+- name: add location https fragments
+  template:
+    src: "fragment_73_location.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/https_70_location_{{ item.sort_label | default(item.path | basename) }}_73_content"
+  with_items:
+    - "{{ nginx_paths }}"
+  when: ssl | bool == True and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+- name: add cors fragment if required
+  template:
+    src: "fragment_74_location_cors.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/https_70_location_{{ item.sort_label | default(item.path | basename) }}_74_cors"
+  with_items:
+    - "{{ nginx_paths}} "
+  when: ssl | bool == True and vhost_required | bool == True and nginx_cors_origin_regexp is defined
+  tags:
+    - nginx_vhost
+
+# if ssl, copy (75 per path) https
+# example https location for /ws path: /etc/nginx/vhost_fragments/bie-test.ala.org.au/https_75_location_end_ws
+# basename filter returns last part of path e.g. for /ws returns ws, for / returns empty
+- name: add location https fragments
+  template:
+    src: "fragment_75_location_end.j2"
+    dest: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}/https_70_location_{{ item.sort_label | default(item.path | basename) }}_75_end"
+  with_items:
+    - "{{ nginx_paths }}"
+  when: ssl | bool == True and vhost_required | bool == True
+  tags:
+    - nginx_vhost
+
+# assemble servername fragments dir, put in sites-available as servername.conf
+- name: assemble fragments into nginx vhost config
+  assemble:
+    src: "{{nginx_conf_dir}}/vhost_fragments/{{hostname}}"
+    dest: "{{nginx_conf_dir}}/sites-available/{{hostname}}{{vfragments_suffix}}.conf"
+  when: vhost_required | bool == True
+  notify:
+   - reload nginx
+  tags:
+    - nginx_vhost
+
+# symlink servername.conf to sites-enabled
+- name: symlink vhost to sites-enabled
+  file:
+    state: link
+    src: "{{nginx_conf_dir}}/sites-available/{{hostname}}{{vfragments_suffix}}.conf"
+    dest: "{{nginx_conf_dir}}/sites-enabled/{{hostname}}{{vfragments_suffix}}.conf"
+  when: vhost_required | bool == True
+  notify:
+   - reload nginx
+  tags:
+    - nginx_vhost
+
+- name: check whether we need a default vhost for Amazon load balancer health checks
+  set_fact: aws_elb_healthcheck_default={{ aws_elb_healthcheck_default | default(false) }}
+  tags:
+    - nginx_vhost
+
+- name: "Default host"
+  include: "defaulthost.yml"
+  when:
+    - ( aws_elb_healthcheck_default | bool == True or nginx_default_vhost_required | bool == True ) and vhost_required | bool == True
+  notify:
+   - reload nginx
+  tags:
+    - nginx_vhost
+
+- name: unset nginx_paths
+  set_fact:
+    nginx_paths: ''
+  tags:
+    - nginx_vhost
+
+- name: unset vfragments_suffix
+  set_fact:
+    vfragments_suffix: ''
+  tags:
+    - nginx_vhost

@@ -1,0 +1,10 @@
+- hosts: species-list
+  roles:
+    - common
+    - java
+    - tomcat
+    - webserver
+    - mysql
+    - { role: nameindex, when: "species_list_version is version('4', '<')" }
+    - i18n
+    - species-list

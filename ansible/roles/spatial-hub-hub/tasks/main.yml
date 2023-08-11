@@ -1,0 +1,16 @@
+- include: ../../common/tasks/setfacts.yml
+  tags:
+    - spatial-hub-hub
+
+- name: ensure target directories exist [data subdirectories etc.]
+  file: path={{item}} state=directory owner={{tomcat_user}} group={{tomcat_user}}
+  with_items:
+    - "{{data_dir}}/spatial-hub/config/{{hub}}"
+  tags:
+    - spatial-hub-hub
+
+- name: copy hub config
+  copy: src={{hub_path}}/ dest={{data_dir}}/spatial-hub/ owner={{tomcat_user}} group={{tomcat_user}}
+  tags:
+    - spatial-hub-hub
+

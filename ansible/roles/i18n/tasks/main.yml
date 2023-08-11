@@ -1,0 +1,34 @@
+- name: Add apt.gbif.es key and repo
+  include_role: name=la-apt
+  when:
+    - ansible_os_family == "Debian"
+    - i18n_package_enabled | bool == True
+  tags:
+    - packages
+    - i18n
+
+- name: Install ala-i18n package
+  apt:
+    pkg:
+    - ala-i18n
+    state: latest
+    update_cache: yes
+  when:
+    - ansible_os_family == "Debian"
+    - i18n_package_enabled | bool == True
+  tags:
+    - packages
+    - i18n
+
+- name: Uninstall ala-i18n package if not in use
+  apt:
+    pkg:
+    - ala-i18n
+    state: absent
+    update_cache: yes
+  when:
+    - ansible_os_family == "Debian"
+    - i18n_package_enabled | bool == False
+  tags:
+    - packages
+    - i18n

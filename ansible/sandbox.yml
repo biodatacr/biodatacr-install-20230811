@@ -1,0 +1,20 @@
+- hosts: sandbox
+  roles:
+    - common
+    - java
+    - tomcat
+    - postfix
+    - cassandra3
+    - solr6
+    # - role: jenkins-simple
+    #   when: sandbox_prod
+    # - role: jenkins-skeleton
+    #   when: sandbox_prod
+    - webserver
+    - nameindex
+    - biocache-db
+    - biocache-properties
+    - biocache-service
+    - { role: biocache-hub, biocache_hub: ala-hub, grouped_facets_json: grouped_facets_sandbox.json }
+    - sandbox
+    - biocache-cli

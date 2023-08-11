@@ -1,0 +1,127 @@
+# 'production' or 'test'
+deployment_env: {{ (doi_deployment_env | default(deployment_env)) | default('production') }}
+
+#
+# CAS Config
+#
+security:
+  cas:
+    casServerName: {{ auth_base_url }}
+    casServerUrlPrefix: {{ auth_cas_url }}
+    casServerLoginUrl: {{ auth_cas_url }}/login
+    casServerLogoutUrl: {{ auth_cas_url }}/logout
+    appServerName: https://{{ doi_service_hostname }}
+    loginUrl: {{ auth_cas_url }}/login
+    logoutUrl: {{ auth_cas_url }}/logout
+  oidc:
+    clientId: { { clientId | default('') } }
+    secret: { { secret | default('') } }
+    discoveryUri: { { discoveryUri | default('') } }
+  jwt:
+    discoveryUri: { { discoveryUri | default('') } }
+  apikey:
+    check:
+      serviceUrl: {{ auth_base_url }}/apikey/ws/check?apikey=
+    ip:
+      whitelist:
+
+logging:
+  config: {{ data_dir }}/doi-service/config/logback.groovy
+
+serverURL: https://{{ doi_service_hostname }}
+serverName: https://{{ doi_service_hostname }}
+
+server:
+  port: {{ doi_service_port }}
+  contextPath: {{ doi_service_context_path }}
+
+support:
+  email: {{ support_email | default('support@ala.org.au') }}
+
+ands:
+  doi:
+    service:
+      url: {{ ands_doi_mint_url }}
+    app:
+      id: {{ ands_doi_app_id }}
+    key: {{ ands_doi_key }}
+    client:
+      id: {{ ands_doi_client_id }}
+
+datacite:
+  doi:
+    service:
+      baseApiUrl: {{ doi_datacite_api_url | default('https://api.test.datacite.org/') }}
+      user: {{ doi_datacite_user }}
+      password: {{ doi_datacite_password }}
+      prefix: '{{ doi_datacite_prefix }}'
+      shoulder: {{ doi_datacite_shoulder }}
+
+ala:
+  base:
+    url: {{ ala_base_url | default('https://www.ala.org.au')}}
+
+skin:
+  layout: {{ (doi_skin_layout | default(skin_layout)) | default('main') }}
+  fluidLayout: {{ skin_fluid_layout | default('') }}
+  orgNameLong: {{ orgNameLong | default('Atlas of Living Australia') }}
+  orgNameShort: {{ orgNameShort | default('ALA') }}
+  favicon: {{ skin_favicon | default('https://www.ala.org.au/app/uploads/2019/01/cropped-favicon-32x32.png') }}
+
+headerAndFooter:
+  baseURL: {{ header_and_footer_baseurl | default('https://www.ala.org.au/commonui-bs3') }}
+  version: {{ header_and_footer_version | default('2') }}
+
+doi:
+{% if doi_service_la_provider_name is defined %}  
+  service:
+    # ANDS or DATACITE
+    provider: 
+      mapping: { {{ doi_service_la_provider_name }}: '{{ doi_service_default_provider | default('DATACITE') }}' }
+{% endif %}
+  storage:
+    provider: {{ doi_storage_provider | default('LOCAL') }}
+  displayTemplates:
+    - "template"
+    - "biocache"
+    - "phylolink"
+    - "csdm"
+
+grails:
+  serverURL: https://{{ doi_service_hostname }}{{ doi_service_context_path }}
+  plugin:
+    awssdk:
+      region: {{ doi_aws_region | default('ap-southeast-2') }}
+      s3:
+        accessKey: {{ doi_aws_s3_access_key }}
+        secretKey: {{ doi_aws_s3_secret_key }}
+        bucket: {{ doi_aws_s3_bucket }}
+        region: {{ doi_aws_region | default('ap-southeast-2') }}
+
+file:
+  store: {{ doi_file_store | default('/data/doi-service/files') }}
+
+googleAnalyticsId: {{ google_analytics_id | default('UA-4355440-1') }}
+
+dataSource:
+  url: jdbc:postgresql://{{ doi_db_hostname }}/{{ doi_db_name }}?autoReconnect=true&connectTimeout=0&useUnicode=true&characterEncoding=UTF-8
+  username: {{ doi_db_user }}
+  password: {{ doi_db_password }}
+
+collections:
+  baseUrl: {{ (collectory_url | default(collections_url)) | default('https://collections.ala.org.au') }}
+
+userDetails:
+  url: {{ auth_base_url }}/userdetails/
+
+# swagger configuration
+swagger:
+  info:
+    description: "{{ doi_swagger_info_description | default('Generate DOIs for ALA applications') }}"
+    version: "{{ doi_swagger_info_version | default('1.0') }}"
+    title:  "{{ doi_swagger_info_title | default('ALA DOI service') }}"
+    termsOfServices: "{{ swagger_info_terms_of_services | default('https://www.ala.org.au/who-we-are/terms-of-use/') }}"
+    contact:
+      name:  "{{ swagger_contact_name | default('ALA Support') }}"
+      url: "{{ swagger_contact_url | default('https://www.ala.org.au') }}"
+      email: "{{ swagger_contact_email | default('support@ala.org.au') }}"
